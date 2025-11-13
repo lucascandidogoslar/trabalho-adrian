@@ -45,7 +45,7 @@ jobs:
 
       - name: Create namespace if not exists
         run: |
-          kubectl get ns ${{ steps.vars.outputs.NAMESPACE }} || \
+          kubectl get ns ${{ steps.vars.outputs.NAMESPACE }} \
           kubectl create ns ${{ steps.vars.outputs.NAMESPACE }}
 
       # Aplica/garante os serviços/ingress/etc. estáticos (idempotente)
