@@ -11,8 +11,8 @@ permissions:
 jobs:
   deploy:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    runs-on: self-hosted
-    environment: production   # opcional
+    runs-on: self-hosted              # <- usando seu runner local
+    environment: production           # opcional
 
     steps:
       - name: Checkout
@@ -52,17 +52,53 @@ jobs:
             kubectl create ns $ns
           }
 
-
       # Aplica/garante os serviços/ingress/etc. estáticos (idempotente)
       - name: Apply base manifests (Service, Prometheus, Grafana, Nginx)
+        shell: powershell
         run: |
-          kubectl apply -f k8s/00-namespace.yaml || true
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/11-app-service.yaml || true
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/31-prometheus-deployment.yaml || true
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/42-grafana-deployment.yaml || true
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/21-nginx-deployment.yaml || true
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/22-nginx-service.yaml || true
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/30-prometheus-configmap.yaml || true
+          $ns = "${{ steps.vars.outputs.NAMESPACE }}"
+
+          kubectl apply -f k8s/00-namespace.yaml
+          if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Falhou ao aplicar 00-namespace.yaml, ignorando"
+            $LASTEXITCODE = 0
+          }
+
+          kubectl apply -n $ns -f k8s/11-app-service.yaml
+          if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Falhou ao aplicar 11-app-service.yaml, ignorando"
+            $LASTEXITCODE = 0
+          }
+
+          kubectl apply -n $ns -f k8s/31-prometheus-deployment.yaml
+          if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Falhou ao aplicar 31-prometheus-deployment.yaml, ignorando"
+            $LASTEXITCODE = 0
+          }
+
+          kubectl apply -n $ns -f k8s/42-grafana-deployment.yaml
+          if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Falhou ao aplicar 42-grafana-deployment.yaml, ignorando"
+            $LASTEXITCODE = 0
+          }
+
+          kubectl apply -n $ns -f k8s/21-nginx-deployment.yaml
+          if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Falhou ao aplicar 21-nginx-deployment.yaml, ignorando"
+            $LASTEXITCODE = 0
+          }
+
+          kubectl apply -n $ns -f k8s/22-nginx-service.yaml
+          if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Falhou ao aplicar 22-nginx-service.yaml, ignorando"
+            $LASTEXITCODE = 0
+          }
+
+          kubectl apply -n $ns -f k8s/30-prometheus-configmap.yaml
+          if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Falhou ao aplicar 30-prometheus-configmap.yaml, ignorando"
+            $LASTEXITCODE = 0
+          }
 
       # Aplica/garante o Deployment (se ainda não existir)
       - name: Apply app deployment (first time)
