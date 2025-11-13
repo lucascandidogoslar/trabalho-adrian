@@ -20,10 +20,17 @@ jobs:
 
       - name: Set vars
         id: vars
+        shell: powershell
         run: |
-          echo "IMAGE=lucasgoslar1/monitor" >> $GITHUB_OUTPUT
-          echo "TAG_SHA=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
-          echo "NAMESPACE=${{ secrets.K8S_NAMESPACE || 'observability-demo' }}" >> $GITHUB_OUTPUT
+          $image  = "lucasgoslar1/monitor"
+          $sha    = "$env:GITHUB_SHA"
+          $tagSha = $sha.Substring(0,7)
+          $ns     = "${{ secrets.K8S_NAMESPACE || 'observability-demo' }}"
+
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "IMAGE=$image"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "TAG_SHA=$tagSha"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "NAMESPACE=$ns"
+
 
       - name: Setup kubectl
         uses: azure/setup-kubectl@v4
@@ -102,8 +109,10 @@ jobs:
 
       # Aplica/garante o Deployment (se ainda não existir)
       - name: Apply app deployment (first time)
+        shell: powershell
         run: |
-          kubectl apply -n ${{ steps.vars.outputs.NAMESPACE }} -f k8s/deployment.yaml
+          $ns = "${{ steps.vars.outputs.NAMESPACE }}"
+          kubectl apply -n $ns -f k8s/deployment.yaml
 
       # Atualiza a imagem para a tag nova (idempotente)
       - name: Set image to new tag
