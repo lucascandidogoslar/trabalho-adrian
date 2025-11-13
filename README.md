@@ -95,4 +95,4 @@ Acesse o Grafana em **/grafana** → já vem com o datasource configurado e um *
   ```bash
   kubectl -n observability-demo get endpoints app-svc
   ```
-- Em ambientes onde NodePort não é permitido, use `port-forward` na `nginx-svc`.
+- Em ambientes onde NodePort não é permitido, use `port-forward` na `nginx-svc`. 
