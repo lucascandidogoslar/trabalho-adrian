@@ -1,0 +1,100 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-conf
+  namespace: observability-demo
+data:
+  nginx.conf: |
+    user  nginx;
+    worker_processes  auto;
+
+    error_log  /var/log/nginx/error.log warn;
+    pid        /var/run/nginx.pid;
+
+    events { worker_connections  1024; }
+
+    http {
+      include       /etc/nginx/mime.types;
+      default_type  application/octet-stream;
+
+      log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                        '$status $body_bytes_sent "$http_referer" '
+                        '"$http_user_agent" "$http_x_forwarded_for"';
+      access_log  /var/log/nginx/access.log  main;
+
+      sendfile on;
+      keepalive_timeout 65;
+
+      upstream app_upstream        { server app-svc:3000; }
+      upstream grafana_upstream    { server grafana-svc:3000; }
+      upstream prometheus_upstream { server prometheus-svc:9090; }
+
+      server {
+        listen 80;
+        server_name _;
+
+        # ----- App -----
+        location /api/ {
+          proxy_pass http://app_upstream/;
+          proxy_http_version 1.1;
+          proxy_set_header Host               $host;
+          proxy_set_header X-Real-IP          $remote_addr;
+          proxy_set_header X-Forwarded-For    $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto  $scheme;
+          proxy_set_header Connection         "";
+        }
+
+        location /metrics {
+          proxy_pass http://app_upstream/metrics;
+          proxy_set_header Host               $host;
+          proxy_set_header X-Forwarded-Proto  $scheme;
+        }
+
+        # ----- Trailing slash helpers -----
+        location = /prometheus  { return 301 /prometheus/; }
+
+        # ----- Grafana (/grafana/) -----
+        location /grafana/ {
+          proxy_pass http://grafana_upstream/;
+          proxy_http_version 1.1;
+
+          proxy_set_header Host               $host;
+          proxy_set_header X-Real-IP          $remote_addr;
+          proxy_set_header X-Forwarded-For    $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto  $scheme;
+
+          # essenciais para subpath + porta NodePort (evita loop 301)
+          proxy_set_header X-Forwarded-Host   $host;
+          proxy_set_header X-Forwarded-Port   30080;
+          proxy_set_header X-Forwarded-Prefix /grafana;
+
+          proxy_redirect off;
+          sub_filter_once off;
+        }
+
+        # ----- Prometheus (/prometheus/) -----
+        location /prometheus/ {
+          proxy_pass http://prometheus_upstream/;
+          proxy_http_version 1.1;
+
+          proxy_set_header Host               $host;
+          proxy_set_header X-Real-IP          $remote_addr;
+          proxy_set_header X-Forwarded-For    $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto  $scheme;
+
+          # manter comportamento consistente com subpath
+          proxy_set_header X-Forwarded-Host   $host;
+          proxy_set_header X-Forwarded-Port   30080;
+          proxy_set_header X-Forwarded-Prefix /prometheus;
+
+          proxy_redirect off;
+          sub_filter_once off;
+        }
+
+        # ----- Landing -----
+        location = / {
+          return 200 'NGINX reverse proxy is up. Paths: /api, /metrics, /grafana, /prometheus';
+          add_header Content-Type text/plain;
+        }
+      }
+    }

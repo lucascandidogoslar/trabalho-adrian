@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: monitor
+  # Define o namespace correto para o recurso
+  namespace: observability-demo 
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: monitor
+  template:
+    metadata:
+      labels:
+        app: monitor
+    spec:
+      containers:
+      - name: monitor
+        # Imagem base inicial que será atualizada pelo CD
+        image: lucasgoslar1/monitor:latest 
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3000
