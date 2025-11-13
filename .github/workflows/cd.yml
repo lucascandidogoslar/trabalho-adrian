@@ -44,9 +44,14 @@ jobs:
           [System.IO.File]::WriteAllBytes($configPath, $bytes)
 
       - name: Create namespace if not exists
+        shell: powershell
         run: |
-          kubectl get ns ${{ steps.vars.outputs.NAMESPACE }} \
-          kubectl create ns ${{ steps.vars.outputs.NAMESPACE }}
+          $ns = "${{ steps.vars.outputs.NAMESPACE }}"
+          kubectl get ns $ns 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            kubectl create ns $ns
+          }
+
 
       # Aplica/garante os serviços/ingress/etc. estáticos (idempotente)
       - name: Apply base manifests (Service, Prometheus, Grafana, Nginx)
