@@ -31,7 +31,7 @@ jobs:
           version: 'latest'
 
       - name: Configure kubeconfig
-        shell: pwsh
+        shell: powershell
         run: |
           $kubeDir = "$HOME\.kube"
           if (-not (Test-Path $kubeDir)) {
